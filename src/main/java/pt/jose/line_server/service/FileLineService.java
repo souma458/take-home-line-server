@@ -32,16 +32,15 @@ public class FileLineService {
 
         try (RandomAccessFile file = createRandomAccessFileWithReadingOnlyMode(filePath)) {
             // First line always starts at position 0
-            lineOffsets.add(0L);
+            long position = 0;
+            lineOffsets.add(position);
 
-            long pos = 0;
-            while (pos < file.length()) {
-                byte b = file.readByte();
-                pos++;
+            while (position < file.length()) {
+                position++;
 
                 // If we found a newline character, the next line starts right after it
-                if (b == '\n') {
-                    lineOffsets.add(pos);
+                if (file.readByte() == '\n') {
+                    lineOffsets.add(position);
                 }
             }
 
