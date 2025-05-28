@@ -30,7 +30,7 @@ public class FileLineService {
         log.info("Building line index for file: {}", filePath);
         lineOffsets.clear();
 
-        try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
+        try (RandomAccessFile file = createRandomAccessFileWithReadingOnlyMode(filePath)) {
             // First line always starts at position 0
             lineOffsets.add(0L);
 
@@ -47,7 +47,6 @@ public class FileLineService {
 
             log.info("Indexed {} lines", lineOffsets.size());
         } catch (IOException e) {
-            log.error("Error building line index", e);
             throw new RuntimeException("Failed to build line index", e);
         }
     }
@@ -64,36 +63,45 @@ public class FileLineService {
             throw new IndexOutOfBoundsException("Line index out of bounds: " + lineIndex);
         }
 
-        try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
+        try (RandomAccessFile file = createRandomAccessFileWithReadingOnlyMode(filePath)) {
             long startOffset = lineOffsets.get(lineIndex);
+            long endOffset = getEndOffset(file, lineIndex);
 
-            // Calculate the length of the line
-            long endOffset;
-            if (lineIndex < lineOffsets.size() - 1) {
-                endOffset = lineOffsets.get(lineIndex + 1);
-            } else {
-                endOffset = file.length();
-            }
-
-            int lineLength = (int) (endOffset - startOffset);
-            if (lineLength > 0) {
-                // For lines other than the last line, don't include the newline character
-                if (lineIndex < lineOffsets.size() - 1) {
-                    lineLength -= 1;
-                }
-
-                byte[] buffer = new byte[lineLength];
-                file.seek(startOffset);
-                file.readFully(buffer, 0, lineLength);
-
-                return new String(buffer, StandardCharsets.US_ASCII);
-            } else {
-                return "";
-            }
+            return getLine(file, lineIndex, startOffset, endOffset);
         } catch (IOException e) {
             log.error("Error reading line at index {}", lineIndex, e);
             throw new RuntimeException("Failed to read line " + lineIndex, e);
         }
+    }
+
+    private long getEndOffset(RandomAccessFile file, int lineIndex) throws IOException {
+        if (lineIndex < lineOffsets.size() - 1) {
+            return lineOffsets.get(lineIndex + 1);
+        } else {
+            return file.length();
+        }
+    }
+
+    private String getLine(RandomAccessFile file, int lineIndex, long startOffset, long endOffset) throws IOException {
+        int lineLength = (int) (endOffset - startOffset);
+        if (lineLength > 0) {
+            // For lines other than the last line, don't include the newline character
+            if (lineIndex < lineOffsets.size() - 1) {
+                lineLength -= 1;
+            }
+
+            byte[] buffer = new byte[lineLength];
+            file.seek(startOffset);
+            file.readFully(buffer, 0, lineLength);
+
+            return new String(buffer, StandardCharsets.US_ASCII);
+        } else {
+            return "";
+        }
+    }
+
+    private static RandomAccessFile createRandomAccessFileWithReadingOnlyMode(String filePath) throws IOException {
+        return new RandomAccessFile(filePath, "r");
     }
 
 }
