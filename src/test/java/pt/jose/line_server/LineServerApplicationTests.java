@@ -6,6 +6,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import pt.jose.line_server.service.FileLineService;
 
@@ -21,6 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class LineServerApplicationTests {
+
+	private static final String EXPECTED_CONTENT_TYPE = MediaType.TEXT_PLAIN_VALUE + ";charset=UTF-8";
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -48,17 +51,23 @@ class LineServerApplicationTests {
 	@Test
 	void givenValidLineIndex_whenGetLine_thenReturnLineContent() throws Exception {
 		mockMvc.perform(get("/lines/0"))
-				.andExpect(status().isOk())
-				.andExpect(content().string("Line 1"));
+				.andExpectAll(
+						status().isOk(),
+						content().string("Line 1"),
+						content().contentType(EXPECTED_CONTENT_TYPE)
+				);
 
 		mockMvc.perform(get("/lines/2"))
-				.andExpect(status().isOk())
-				.andExpect(content().string("Line 3"));
+				.andExpectAll(
+						status().isOk(),
+						content().string("Line 3"),
+						content().contentType(EXPECTED_CONTENT_TYPE)
+				);
 	}
 
 	@Test
 	void givenInvalidLineIndex_whenGetLine_thenReturn413() throws Exception {
-		// Test out of bounds line request
+		// Test out-of-bounds line request
 		mockMvc.perform(get("/lines/10"))
 			.andExpect(status().isPayloadTooLarge());
 
